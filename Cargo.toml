@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 encoding = "0.2.33"
 iced = "0.8.0"
+regex = "1.7.3"
 rfd = "0.11.3"
