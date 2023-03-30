@@ -24,6 +24,7 @@ pub struct DocumentationItemChild {
 #[derive(Default, Debug, Clone)]
 pub struct DocumentationItem {
     r#type: DocumentationType,
+    note: String,
     name: String,
     children: Vec<DocumentationItemChild>,
 }
@@ -60,11 +61,10 @@ pub fn parse_file(
             ParsingState::None => {
                 if line.contains("//! ") {
                     curret_item = DocumentationItem {
-                        name: line[4..].to_owned(),
+                        note: line[4..].to_owned(),
                         ..Default::default()
                     };
                     parsing_state = ParsingState::Name;
-                    continue;
                 }
             }
             ParsingState::Name => {
@@ -75,8 +75,8 @@ pub fn parse_file(
                     }
                     curret_item.name = captures.get(2).unwrap().as_str().to_owned();
                     parsing_state = ParsingState::Fields;
-                } else {
-                    continue;
+                } else if line.contains("#define ") {
+                    parsing_state = ParsingState::None;
                 }
             }
             ParsingState::Fields => {
@@ -91,8 +91,6 @@ pub fn parse_file(
                 else if line.contains(curret_item.name.as_str()) && line.contains('}') {
                     data.items.push(curret_item.clone());
                     parsing_state = ParsingState::None;
-                } else {
-                    continue;
                 }
             }
         }
