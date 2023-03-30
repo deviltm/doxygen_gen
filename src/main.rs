@@ -1,8 +1,9 @@
 #![allow(dead_code)]
-
 use std::path::PathBuf;
-
 use parser::parse_file;
+
+//Module to define all the needed regex
+mod regex;
 //Header parser module
 mod parser;
 //module for the iced window
