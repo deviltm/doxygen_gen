@@ -15,5 +15,5 @@ fn main() {
         encoding::all::WINDOWS_1251,
     )
     .unwrap();
-    println!("{:?}", data)
+    println!("{:#?}", data)
 }

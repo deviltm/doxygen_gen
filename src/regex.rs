@@ -72,3 +72,14 @@ fn test_field_enum_struct(){
     assert_eq!(captures.get(1).unwrap().as_str(), "int TEST");
     assert_eq!(captures.get(2).unwrap().as_str(), "description");
 }
+
+
+#[test]
+fn test_field_enum_basic_cyrillics(){
+    let input = "   TEST, //!< описание";
+    let re = field_regex();
+    assert_eq!(re.is_match(input), true);
+    let captures = re.captures(input).unwrap();
+    assert_eq!(captures.get(1).unwrap().as_str(), "TEST,");
+    assert_eq!(captures.get(2).unwrap().as_str(), "описание");
+}

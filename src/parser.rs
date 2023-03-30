@@ -1,5 +1,12 @@
+use crate::regex::*;
 use encoding::{DecoderTrap, Encoding};
 use std::{fs::OpenOptions, io::Read, path::PathBuf};
+
+enum ParsingState {
+    None,
+    Name,
+    Fields,
+}
 
 #[derive(Default, Debug, Clone)]
 pub enum DocumentationType {
@@ -16,7 +23,7 @@ pub struct DocumentationItemChild {
 
 #[derive(Default, Debug, Clone)]
 pub struct DocumentationItem {
-    item_type: DocumentationType,
+    r#type: DocumentationType,
     name: String,
     children: Vec<DocumentationItemChild>,
 }
@@ -39,16 +46,55 @@ pub fn parse_file(
     let contents = encoding.decode(contents, DecoderTrap::Ignore).unwrap();
 
     let mut data = DocumentationData::default();
-    let mut curret_item: Option<DocumentationItem> = None;
+    //Have to asign the default value, even tho it's deleted
+    let mut curret_item = DocumentationItem::default();
+    let mut parsing_state = ParsingState::None;
+
+    //Precompile the regex objects
+    let def_regex = name_regex();
+    let field_regex = field_regex();
 
     for line in contents.lines() {
         //Encountered a struct/enum definition
-        if line.contains("//! ") {
-            let mut i = DocumentationItem::default();
-            i.name = line[4..].to_owned();
-            curret_item = Some(i);
-        }else if let Some(item) = curret_item.as_mut(){
-
+        match parsing_state {
+            ParsingState::None => {
+                if line.contains("//! ") {
+                    curret_item = DocumentationItem {
+                        name: line[4..].to_owned(),
+                        ..Default::default()
+                    };
+                    parsing_state = ParsingState::Name;
+                    continue;
+                }
+            }
+            ParsingState::Name => {
+                let captures = def_regex.captures(line);
+                if let Some(captures) = captures {
+                    if captures.get(1).unwrap().as_str() == "enum" {
+                        curret_item.r#type = DocumentationType::Enum;
+                    }
+                    curret_item.name = captures.get(2).unwrap().as_str().to_owned();
+                    parsing_state = ParsingState::Fields;
+                } else {
+                    continue;
+                }
+            }
+            ParsingState::Fields => {
+                let captures = field_regex.captures(line);
+                if let Some(captures) = captures {
+                    curret_item.children.push(DocumentationItemChild {
+                        datatype: captures.get(1).unwrap().as_str().to_owned(),
+                        note: captures.get(2).unwrap().as_str().to_owned(),
+                    });
+                }
+                //The name check may not be necesarry, but gonna leave it here just in case
+                else if line.contains(curret_item.name.as_str()) && line.contains('}') {
+                    data.items.push(curret_item.clone());
+                    parsing_state = ParsingState::None;
+                } else {
+                    continue;
+                }
+            }
         }
     }
 
