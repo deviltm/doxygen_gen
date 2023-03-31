@@ -73,7 +73,7 @@ pub fn export_doc(data: DocumentationData, file: PathBuf) -> Result<(), std::io:
                         cell!("-"),
                         cell!("-"),
                         cell!("-"),
-                        cell!("-"),
+                        cell!(l.additional_data.to_owned()),
                     ])
                 }))
                 .collect(),

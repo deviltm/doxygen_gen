@@ -5,7 +5,19 @@ pub fn name_regex() -> Regex {
 pub fn field_regex() -> Regex {
     Regex::new(r"\s*(.+?;?)\s*//!<\s*(.+?)$").unwrap()
 }
+pub fn additional_data_regex() -> Regex {
+    Regex::new(r"(.+?)\s+//\s*\((.+?)\)").unwrap()
+}
 
+#[test]
+fn test_additional_data() {
+    let input = "this is the comment // (min: 0 max: 100)";
+    let re = additional_data_regex();
+    assert_eq!(re.is_match(input), true);
+    let captures = re.captures(input).unwrap();
+    assert_eq!(captures.get(1).unwrap().as_str(), "this is the comment");
+    assert_eq!(captures.get(2).unwrap().as_str(), "min: 0 max: 100");
+}
 #[test]
 fn test_struct_name_weird_whitespaces() {
     let input = "           typedef            struct      employee_struct              {      ";

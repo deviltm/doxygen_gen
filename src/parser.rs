@@ -1,5 +1,5 @@
 use crate::regex::*;
-use encoding::{DecoderTrap, Encoding};
+use encoding::{all::UTF_8, DecoderTrap, Encoding};
 use std::{fs::OpenOptions, io::Read, path::PathBuf};
 
 enum ParsingState {
@@ -19,6 +19,7 @@ pub enum DocumentationType {
 pub struct DocumentationItemChild {
     pub datatype: String,
     pub note: String,
+    pub additional_data: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -54,6 +55,7 @@ pub fn parse_file(
     //Precompile the regex objects
     let def_regex = name_regex();
     let field_regex = field_regex();
+    let additional_data_regex = additional_data_regex();
 
     for line in contents.lines() {
         if line.is_empty() {
@@ -86,12 +88,17 @@ pub fn parse_file(
                 let captures = field_regex.captures(line);
                 if let Some(captures) = captures {
                     let mut note = captures.get(2).unwrap().as_str();
+                    let mut data = "-";
                     if note.contains(" //") {
-                        note = note.split(" //").next().unwrap();
+                        if let Some(captures) = additional_data_regex.captures(note) {
+                            note = captures.get(1).unwrap().as_str();
+                            data = captures.get(2).unwrap().as_str();
+                        }
                     }
                     curret_item.children.push(DocumentationItemChild {
                         datatype: captures.get(1).unwrap().as_str().to_owned(),
                         note: note.to_owned(),
+                        additional_data: data.to_owned(),
                     });
                 }
                 //The name check may not be necesarry, but gonna leave it here just in case
@@ -124,6 +131,7 @@ fn parse_simple_file_test() {
     let expected = DocumentationItemChild {
         datatype: "int a;".to_owned(),
         note: "This is A".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -132,6 +140,7 @@ fn parse_simple_file_test() {
     let expected = DocumentationItemChild {
         datatype: "int b;".to_owned(),
         note: "This is B".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -156,6 +165,7 @@ fn parse_file_with_multiple_stucts_test() {
     let expected = DocumentationItemChild {
         datatype: "int a;".to_owned(),
         note: "This is A".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -164,6 +174,7 @@ fn parse_file_with_multiple_stucts_test() {
     let expected = DocumentationItemChild {
         datatype: "int b;".to_owned(),
         note: "This is B".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -188,6 +199,7 @@ fn parse_file_with_enum_test() {
     let expected = DocumentationItemChild {
         datatype: "a,".to_owned(),
         note: "This is A".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -196,6 +208,7 @@ fn parse_file_with_enum_test() {
     let expected = DocumentationItemChild {
         datatype: "b,".to_owned(),
         note: "This is B".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -220,6 +233,7 @@ fn parse_file_with_defines_test() {
     let expected = DocumentationItemChild {
         datatype: "int a;".to_owned(),
         note: "This is A".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -228,6 +242,7 @@ fn parse_file_with_defines_test() {
     let expected = DocumentationItemChild {
         datatype: "int b;".to_owned(),
         note: "This is B".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -252,6 +267,7 @@ fn parse_file_with_additional_note_test() {
     let expected = DocumentationItemChild {
         datatype: "int a;".to_owned(),
         note: "This is A".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -260,6 +276,7 @@ fn parse_file_with_additional_note_test() {
     let expected = DocumentationItemChild {
         datatype: "int b;".to_owned(),
         note: "This is B".to_owned(),
+        additional_data: "".to_owned(),
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
