@@ -17,22 +17,30 @@ pub enum DocumentationType {
 
 #[derive(Default, Debug, Clone)]
 pub struct DocumentationItemChild {
-    datatype: String,
-    note: String,
+    pub datatype: String,
+    pub note: String,
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct DocumentationItem {
-    r#type: DocumentationType,
-    note: String,
-    name: String,
-    children: Vec<DocumentationItemChild>,
+    pub r#type: DocumentationType,
+    pub note: String,
+    pub name: String,
+    pub children: Vec<DocumentationItemChild>,
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct DocumentationData {
     //Potentially add other data here
     items: Vec<DocumentationItem>,
+}
+
+impl Iterator for DocumentationData {
+    type Item = DocumentationItem;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.items.pop()
+    }
 }
 
 pub fn parse_file(
@@ -47,7 +55,7 @@ pub fn parse_file(
     let contents = encoding.decode(contents, DecoderTrap::Ignore).unwrap();
 
     let mut data = DocumentationData::default();
-    //Have to asign the default value, even tho it's deleted
+    //Have to asign the default value, even tho it's not used 
     let mut curret_item = DocumentationItem::default();
     let mut parsing_state = ParsingState::None;
 
@@ -56,9 +64,12 @@ pub fn parse_file(
     let field_regex = field_regex();
 
     for line in contents.lines() {
-        //Encountered a struct/enum definition
+        if line.is_empty(){
+            continue;
+        }
         match parsing_state {
             ParsingState::None => {
+                //Encountered a struct/enum definition
                 if line.contains("//! ") {
                     curret_item = DocumentationItem {
                         note: line[4..].to_owned(),
