@@ -3,7 +3,7 @@ pub fn name_regex() -> Regex {
     Regex::new(r"typedef\s+(enum|struct)\s+(\w+)\s*\{").unwrap()
 }
 pub fn field_regex() -> Regex {
-    Regex::new(r"\s*(.+?);?\s*//!<\s*(.+?)$").unwrap()
+    Regex::new(r"\s*(.+?;?)\s*//!<\s*(.+?)$").unwrap()
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn test_field_enum_basic(){
     let re = field_regex();
     assert_eq!(re.is_match(input), true);
     let captures = re.captures(input).unwrap();
-    assert_eq!(captures.get(1).unwrap().as_str(), "test_test Test : 6");
+    assert_eq!(captures.get(1).unwrap().as_str(), "test_test Test : 6;");
     assert_eq!(captures.get(2).unwrap().as_str(), "description description");
 }
 
@@ -69,7 +69,7 @@ fn test_field_enum_struct(){
     let re = field_regex();
     assert_eq!(re.is_match(input), true);
     let captures = re.captures(input).unwrap();
-    assert_eq!(captures.get(1).unwrap().as_str(), "int TEST");
+    assert_eq!(captures.get(1).unwrap().as_str(), "int TEST;");
     assert_eq!(captures.get(2).unwrap().as_str(), "description");
 }
 

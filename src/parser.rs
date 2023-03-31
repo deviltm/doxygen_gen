@@ -1,5 +1,5 @@
 use crate::regex::*;
-use encoding::{DecoderTrap, Encoding};
+use encoding::{DecoderTrap, Encoding, all::UTF_8};
 use std::{fs::OpenOptions, io::Read, path::PathBuf};
 
 enum ParsingState {
@@ -8,7 +8,7 @@ enum ParsingState {
     Fields,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum DocumentationType {
     #[default]
     Struct,
@@ -32,7 +32,7 @@ pub struct DocumentationItem {
 #[derive(Default, Debug, Clone)]
 pub struct DocumentationData {
     //Potentially add other data here
-    items: Vec<DocumentationItem>,
+    pub items: Vec<DocumentationItem>,
 }
 
 impl Iterator for DocumentationData {
@@ -55,7 +55,7 @@ pub fn parse_file(
     let contents = encoding.decode(contents, DecoderTrap::Ignore).unwrap();
 
     let mut data = DocumentationData::default();
-    //Have to asign the default value, even tho it's not used 
+    //Have to asign the default value, even tho it's not used
     let mut curret_item = DocumentationItem::default();
     let mut parsing_state = ParsingState::None;
 
@@ -64,7 +64,7 @@ pub fn parse_file(
     let field_regex = field_regex();
 
     for line in contents.lines() {
-        if line.is_empty(){
+        if line.is_empty() {
             continue;
         }
         match parsing_state {
@@ -93,9 +93,13 @@ pub fn parse_file(
             ParsingState::Fields => {
                 let captures = field_regex.captures(line);
                 if let Some(captures) = captures {
+                    let mut note = captures.get(2).unwrap().as_str();
+                    if note.contains(" //") {
+                        note = note.split(" //").nth(0).unwrap();
+                    }
                     curret_item.children.push(DocumentationItemChild {
                         datatype: captures.get(1).unwrap().as_str().to_owned(),
-                        note: captures.get(2).unwrap().as_str().to_owned(),
+                        note: note.to_owned(),
                     });
                 }
                 //The name check may not be necesarry, but gonna leave it here just in case
@@ -108,4 +112,164 @@ pub fn parse_file(
     }
 
     Ok(data)
+}
+
+#[test]
+fn parse_simple_file_test() {
+    let data = parse_file(PathBuf::from("test_data/test1.h"), UTF_8).unwrap();
+    assert_eq!(data.items.len(), 1);
+    let data = data.items[0].clone();
+    assert_eq!(data.children.len(), 2);
+    let expected = DocumentationItem {
+        r#type: DocumentationType::Struct,
+        note: "Test struct".to_owned(),
+        name: "test".to_owned(),
+        children: Vec::default(),
+    };
+    assert_eq!(data.r#type, expected.r#type);
+    assert_eq!(data.note, expected.note);
+    assert_eq!(data.name, expected.name);
+    let expected = DocumentationItemChild {
+        datatype: "int a;".to_owned(),
+        note: "This is A".to_owned(),
+    };
+    let child = data.children[0].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
+
+    let expected = DocumentationItemChild {
+        datatype: "int b;".to_owned(),
+        note: "This is B".to_owned(),
+    };
+    let child = data.children[1].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
+}
+
+#[test]
+fn parse_file_with_multiple_stucts_test() {
+    let data = parse_file(PathBuf::from("test_data/test3.h"), UTF_8).unwrap();
+    assert_eq!(data.items.len(), 2);
+    let data = data.items[1].clone();
+    assert_eq!(data.children.len(), 2);
+    let expected = DocumentationItem {
+        r#type: DocumentationType::Struct,
+        note: "Test struct".to_owned(),
+        name: "test".to_owned(),
+        children: Vec::default(),
+    };
+    assert_eq!(data.r#type, expected.r#type);
+    assert_eq!(data.note, expected.note);
+    assert_eq!(data.name, expected.name);
+    let expected = DocumentationItemChild {
+        datatype: "int a;".to_owned(),
+        note: "This is A".to_owned(),
+    };
+    let child = data.children[0].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
+
+    let expected = DocumentationItemChild {
+        datatype: "int b;".to_owned(),
+        note: "This is B".to_owned(),
+    };
+    let child = data.children[1].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
+}
+
+#[test]
+fn parse_file_with_enum_test() {
+    let data = parse_file(PathBuf::from("test_data/test4.h"), UTF_8).unwrap();
+    assert_eq!(data.items.len(), 2);
+    let data = data.items[1].clone();
+    assert_eq!(data.children.len(), 2);
+    let expected = DocumentationItem {
+        r#type: DocumentationType::Enum,
+        note: "Test struct".to_owned(),
+        name: "test".to_owned(),
+        children: Vec::default(),
+    };
+    assert_eq!(data.r#type, expected.r#type);
+    assert_eq!(data.note, expected.note);
+    assert_eq!(data.name, expected.name);
+    let expected = DocumentationItemChild {
+        datatype: "a,".to_owned(),
+        note: "This is A".to_owned(),
+    };
+    let child = data.children[0].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
+
+    let expected = DocumentationItemChild {
+        datatype: "b,".to_owned(),
+        note: "This is B".to_owned(),
+    };
+    let child = data.children[1].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
+}
+
+#[test]
+fn parse_file_with_defines_test() {
+    let data = parse_file(PathBuf::from("test_data/test2.h"), UTF_8).unwrap();
+    assert_eq!(data.items.len(), 1);
+    let data = data.items[0].clone();
+    assert_eq!(data.children.len(), 2);
+    let expected = DocumentationItem {
+        r#type: DocumentationType::Struct,
+        note: "Test struct".to_owned(),
+        name: "test".to_owned(),
+        children: Vec::default(),
+    };
+    assert_eq!(data.r#type, expected.r#type);
+    assert_eq!(data.note, expected.note);
+    assert_eq!(data.name, expected.name);
+    let expected = DocumentationItemChild {
+        datatype: "int a;".to_owned(),
+        note: "This is A".to_owned(),
+    };
+    let child = data.children[0].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
+
+    let expected = DocumentationItemChild {
+        datatype: "int b;".to_owned(),
+        note: "This is B".to_owned(),
+    };
+    let child = data.children[1].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
+}
+
+#[test]
+fn parse_file_with_additional_note_test() {
+    let data = parse_file(PathBuf::from("test_data/test5.h"), UTF_8).unwrap();
+    assert_eq!(data.items.len(), 2);
+    let data = data.items[1].clone();
+    assert_eq!(data.children.len(), 2);
+    let expected = DocumentationItem {
+        r#type: DocumentationType::Struct,
+        note: "Test struct".to_owned(),
+        name: "test".to_owned(),
+        children: Vec::default(),
+    };
+    assert_eq!(data.r#type, expected.r#type);
+    assert_eq!(data.note, expected.note);
+    assert_eq!(data.name, expected.name);
+    let expected = DocumentationItemChild {
+        datatype: "int a;".to_owned(),
+        note: "This is A".to_owned(),
+    };
+    let child = data.children[0].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
+
+    let expected = DocumentationItemChild {
+        datatype: "int b;".to_owned(),
+        note: "This is B".to_owned(),
+    };
+    let child = data.children[1].clone();
+    assert_eq!(child.datatype, expected.datatype);
+    assert_eq!(child.note, expected.note);
 }
