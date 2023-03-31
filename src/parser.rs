@@ -1,5 +1,5 @@
 use crate::regex::*;
-use encoding::{DecoderTrap, Encoding, all::UTF_8};
+use encoding::{DecoderTrap, Encoding};
 use std::{fs::OpenOptions, io::Read, path::PathBuf};
 
 enum ParsingState {
@@ -33,14 +33,6 @@ pub struct DocumentationItem {
 pub struct DocumentationData {
     //Potentially add other data here
     pub items: Vec<DocumentationItem>,
-}
-
-impl Iterator for DocumentationData {
-    type Item = DocumentationItem;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.items.pop()
-    }
 }
 
 pub fn parse_file(
@@ -95,7 +87,7 @@ pub fn parse_file(
                 if let Some(captures) = captures {
                     let mut note = captures.get(2).unwrap().as_str();
                     if note.contains(" //") {
-                        note = note.split(" //").nth(0).unwrap();
+                        note = note.split(" //").next().unwrap();
                     }
                     curret_item.children.push(DocumentationItemChild {
                         datatype: captures.get(1).unwrap().as_str().to_owned(),

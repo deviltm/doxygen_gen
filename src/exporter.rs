@@ -50,7 +50,7 @@ pub fn export_doc(data: DocumentationData, file: PathBuf) -> Result<(), std::io:
         cell!("Примечание"),
     ])];
 
-    for item in data {
+    for item in data.items {
         //Table name
         doc = doc
             .add_paragraph(paragraph!(
