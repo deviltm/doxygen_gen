@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use exporter::{export_pdf, export_doc};
+use exporter::export_doc;
 use parser::parse_file;
 use std::path::PathBuf;
 
