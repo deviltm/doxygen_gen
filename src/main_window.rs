@@ -1,9 +1,6 @@
-#![allow(dead_code)]
-use encoding::Encoding;
 use iced::{
-    theme::Scrollable,
     widget::{button, column, container, pick_list, row, scrollable, text},
-    Alignment, Length, Renderer, Sandbox,
+    Alignment, Length, Sandbox,
 };
 use rfd::FileDialog;
 use std::{borrow::Cow, path::PathBuf};
@@ -65,9 +62,9 @@ impl Sandbox for MainWindow {
                     let data = parse_file(file.clone(), encoding.to_owned()).unwrap();
                     let mut out = self.output_directory.join(file.file_name().unwrap());
                     out.set_extension("docx");
-                    if let Err(e) = export_doc(data, out.clone()){
-                        println!("{:#?}",out);
-                        println!("{:#?}",e);
+                    if let Err(e) = export_doc(data, out.clone()) {
+                        println!("{:#?}", out);
+                        println!("{:#?}", e);
                     }
                 }
             }
@@ -101,7 +98,7 @@ impl Sandbox for MainWindow {
         let open_column = column![text("Files:"), scroll, open_button]
             .spacing(10)
             .padding(20)
-            .width(300)
+            .width(Length::Fill)
             .align_items(Alignment::Center);
         let save_dit_text = text(self.output_directory.display());
         let save_column = column![

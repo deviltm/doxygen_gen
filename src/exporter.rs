@@ -1,10 +1,6 @@
-#![allow(dead_code)]
 use crate::parser::DocumentationData;
 use docx_rs::*;
-use std::{
-    fs::{File, OpenOptions},
-    path::PathBuf,
-};
+use std::{fs::File, path::PathBuf};
 
 #[macro_export]
 macro_rules! paragraph {
@@ -25,12 +21,6 @@ macro_rules! cell {
     ($text:expr,$align:expr) => {
         TableCell::new().add_paragraph(paragraph!($text, $align))
     };
-}
-
-pub fn export_pdf(_data: DocumentationData, file: PathBuf) -> Result<(), std::io::Error> {
-    //Open file first, just so that we don't have to do the pdf generation if the path is incorrect
-    let mut _file = OpenOptions::new().write(true).open(file)?;
-    Ok(())
 }
 
 pub fn export_doc(data: DocumentationData, file: PathBuf) -> Result<(), std::io::Error> {

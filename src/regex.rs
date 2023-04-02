@@ -47,7 +47,8 @@ fn test_enum_name() {
     assert_eq!(captures.get(2).unwrap().as_str(), "employee_struct");
 }
 
-#[test] fn test_field_enum(){
+#[test]
+fn test_field_enum() {
     let input = "TEST_test = 1, //!< description description";
     let re = field_regex();
     assert_eq!(re.is_match(input), true);
@@ -57,7 +58,7 @@ fn test_enum_name() {
 }
 
 #[test]
-fn test_field_enum_basic(){
+fn test_field_enum_basic() {
     let input = "TEST, //!< description";
     let re = field_regex();
     assert_eq!(re.is_match(input), true);
@@ -66,7 +67,8 @@ fn test_field_enum_basic(){
     assert_eq!(captures.get(2).unwrap().as_str(), "description");
 }
 
-#[test] fn test_field_struct(){
+#[test]
+fn test_field_struct() {
     let input = "test_test Test : 6; //!< description description";
     let re = field_regex();
     assert_eq!(re.is_match(input), true);
@@ -76,7 +78,7 @@ fn test_field_enum_basic(){
 }
 
 #[test]
-fn test_field_enum_struct(){
+fn test_field_enum_struct() {
     let input = "int TEST; //!< description";
     let re = field_regex();
     assert_eq!(re.is_match(input), true);
@@ -85,9 +87,8 @@ fn test_field_enum_struct(){
     assert_eq!(captures.get(2).unwrap().as_str(), "description");
 }
 
-
 #[test]
-fn test_field_enum_basic_cyrillics(){
+fn test_field_enum_basic_cyrillics() {
     let input = "   TEST, //!< описание";
     let re = field_regex();
     assert_eq!(re.is_match(input), true);

@@ -1,5 +1,5 @@
-#[allow(dead_code)]
 use iced::Sandbox;
+use iced::Settings;
 //Module to define all the needed regex
 mod regex;
 //Header parser module
@@ -10,5 +10,10 @@ mod exporter;
 mod main_window;
 
 fn main() -> iced::Result {
-    main_window::MainWindow::run(iced::Settings::default())
+    let mut settings = Settings {
+        text_multithreading: true,
+        ..Default::default()
+    };
+    settings.window.size = (500, 400);
+    main_window::MainWindow::run(settings)
 }

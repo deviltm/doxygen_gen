@@ -1,5 +1,5 @@
 use crate::regex::*;
-use encoding::{all::UTF_8, DecoderTrap, Encoding};
+use encoding::{DecoderTrap, Encoding};
 use std::{fs::OpenOptions, io::Read, path::PathBuf};
 
 enum ParsingState {
@@ -115,7 +115,7 @@ pub fn parse_file(
 
 #[test]
 fn parse_simple_file_test() {
-    let data = parse_file(PathBuf::from("test_data/test1.h"), UTF_8).unwrap();
+    let data = parse_file(PathBuf::from("test_data/test1.h"), encoding::all::UTF_8).unwrap();
     assert_eq!(data.items.len(), 1);
     let data = data.items[0].clone();
     assert_eq!(data.children.len(), 2);
@@ -149,7 +149,7 @@ fn parse_simple_file_test() {
 
 #[test]
 fn parse_file_with_multiple_stucts_test() {
-    let data = parse_file(PathBuf::from("test_data/test3.h"), UTF_8).unwrap();
+    let data = parse_file(PathBuf::from("test_data/test3.h"), encoding::all::UTF_8).unwrap();
     assert_eq!(data.items.len(), 2);
     let data = data.items[1].clone();
     assert_eq!(data.children.len(), 2);
@@ -183,7 +183,7 @@ fn parse_file_with_multiple_stucts_test() {
 
 #[test]
 fn parse_file_with_enum_test() {
-    let data = parse_file(PathBuf::from("test_data/test4.h"), UTF_8).unwrap();
+    let data = parse_file(PathBuf::from("test_data/test4.h"), encoding::all::UTF_8).unwrap();
     assert_eq!(data.items.len(), 2);
     let data = data.items[1].clone();
     assert_eq!(data.children.len(), 2);
@@ -217,7 +217,7 @@ fn parse_file_with_enum_test() {
 
 #[test]
 fn parse_file_with_defines_test() {
-    let data = parse_file(PathBuf::from("test_data/test2.h"), UTF_8).unwrap();
+    let data = parse_file(PathBuf::from("test_data/test2.h"), encoding::all::UTF_8).unwrap();
     assert_eq!(data.items.len(), 1);
     let data = data.items[0].clone();
     assert_eq!(data.children.len(), 2);
@@ -251,7 +251,7 @@ fn parse_file_with_defines_test() {
 
 #[test]
 fn parse_file_with_additional_note_test() {
-    let data = parse_file(PathBuf::from("test_data/test5.h"), UTF_8).unwrap();
+    let data = parse_file(PathBuf::from("test_data/test5.h"), encoding::all::UTF_8).unwrap();
     assert_eq!(data.items.len(), 2);
     let data = data.items[1].clone();
     assert_eq!(data.children.len(), 2);
