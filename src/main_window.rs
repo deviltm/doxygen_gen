@@ -1,9 +1,10 @@
+use encoding::Encoding;
 use iced::{
-    widget::{button, column, container, pick_list, row, scrollable, text},
+    widget::{button, column, container, pick_list, progress_bar, row, scrollable, text},
     Alignment, Length, Sandbox,
 };
 use rfd::FileDialog;
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, ops::RangeInclusive, path::PathBuf, thread, sync::mpsc::channel};
 
 use crate::{exporter::export_doc, parser::parse_file};
 
@@ -11,6 +12,8 @@ pub struct MainWindow {
     files: Vec<PathBuf>,
     encoding: Option<String>,
     output_directory: PathBuf,
+    processing: bool,
+    progress: i32,
 }
 
 #[derive(Debug, Clone)]
@@ -19,6 +22,17 @@ pub enum Message {
     PickList(String),
     ProccessButtonClick,
     SaveDirectoryButtonClick,
+    ProgressChanged(i32),
+}
+
+fn process_file(r#in: PathBuf, out: &PathBuf, encoding: &dyn Encoding) {
+    let data = parse_file(r#in.clone(), encoding.to_owned()).unwrap();
+    let mut out = out.join(r#in.file_name().unwrap());
+    out.set_extension("docx");
+    if let Err(e) = export_doc(data, out.clone()) {
+        println!("{:#?}", out);
+        println!("{:#?}", e);
+    }
 }
 
 impl Sandbox for MainWindow {
@@ -29,6 +43,8 @@ impl Sandbox for MainWindow {
             files: Vec::default(),
             encoding: Some("utf-8".to_owned()),
             output_directory: PathBuf::default(),
+            processing: false,
+            progress: 0,
         }
     }
 
@@ -58,17 +74,27 @@ impl Sandbox for MainWindow {
                     .iter()
                     .find(|x| x.name() == self.encoding.clone().unwrap())
                     .unwrap();
-                for file in &self.files {
-                    let data = parse_file(file.clone(), encoding.to_owned()).unwrap();
-                    let mut out = self.output_directory.join(file.file_name().unwrap());
-                    out.set_extension("docx");
-                    if let Err(e) = export_doc(data, out.clone()) {
-                        println!("{:#?}", out);
-                        println!("{:#?}", e);
+                
+                let files = self.files.clone();
+                self.files.clear();
+                let output_directory = self.output_directory.clone();
+
+                let (tx,rx) = channel();
+
+                let processing_thread = thread::spawn(move || {
+                    for file in files {
+                        process_file(file.clone(), &output_directory, encoding.to_owned());
+                        tx.send(file).unwrap();
                     }
+                });
+
+                for file in rx{
+                    println!("{:#?}", file);
                 }
+                processing_thread.join().unwrap();
             }
             Message::PickList(e) => self.encoding = Some(e),
+            Message::ProgressChanged(val) => self.progress = val,
         }
     }
 
@@ -101,16 +127,36 @@ impl Sandbox for MainWindow {
             .width(Length::Fill)
             .align_items(Alignment::Center);
         let save_dit_text = text(self.output_directory.display());
-        let save_column = column![
-            text("Encoding:"),
-            encodings_list,
-            save_dir_button,
-            save_dit_text,
-            go_button
-        ]
-        .spacing(10)
-        .padding(20)
-        .align_items(Alignment::Center);
+        let save_column;
+        if self.processing {
+            let progress = progress_bar(
+                RangeInclusive::new(0.0, self.files.len() as f32),
+                self.progress as f32,
+            )
+            .width(Length::Fill);
+            save_column = column![
+                text("Encoding:"),
+                encodings_list,
+                save_dir_button,
+                save_dit_text,
+                go_button,
+                progress
+            ]
+            .spacing(10)
+            .padding(20)
+            .align_items(Alignment::Center);
+        } else {
+            save_column = column![
+                text("Encoding:"),
+                encodings_list,
+                save_dir_button,
+                save_dit_text,
+                go_button
+            ]
+            .spacing(10)
+            .padding(20)
+            .align_items(Alignment::Center);
+        }
         let content = row![open_column, save_column];
         container(content).center_y().center_x().padding(10).into()
     }
