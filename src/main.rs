@@ -14,6 +14,8 @@ fn main() -> iced::Result {
         text_multithreading: true,
         ..Default::default()
     };
+    settings.window.max_size = Some((500, 400));
+    settings.window.min_size = Some((500, 400));
     settings.window.size = (500, 400);
     main_window::MainWindow::run(settings)
 }
