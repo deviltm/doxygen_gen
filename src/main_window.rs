@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 use encoding::Encoding;
 use iced::{
-    widget::{button, column, container, pick_list},
-    Alignment, Renderer, Sandbox,
+    theme::Scrollable,
+    widget::{button, column, container, pick_list, row, scrollable, text},
+    Alignment, Length, Renderer, Sandbox,
 };
 use rfd::FileDialog;
 use std::{borrow::Cow, path::PathBuf};
@@ -29,7 +30,7 @@ impl Sandbox for MainWindow {
     fn new() -> Self {
         MainWindow {
             files: Vec::default(),
-            encoding: Some("UTF-8".to_owned()),
+            encoding: Some("utf-8".to_owned()),
             output_directory: PathBuf::default(),
         }
     }
@@ -55,17 +56,19 @@ impl Sandbox for MainWindow {
                 }
             }
             Message::ProccessButtonClick => {
-                //TODO: add empty value checks 
+                //TODO: add empty value checks
                 let encoding = encoding::all::encodings()
                     .iter()
                     .find(|x| x.name() == self.encoding.clone().unwrap())
                     .unwrap();
                 for file in &self.files {
                     let data = parse_file(file.clone(), encoding.to_owned()).unwrap();
-                    let out = self.output_directory.to_str().unwrap().to_owned()
-                        + file.to_str().unwrap()
-                        + ".h";
-                    export_doc(data, out.into()).unwrap();
+                    let mut out = self.output_directory.join(file.file_name().unwrap());
+                    out.set_extension("docx");
+                    if let Err(e) = export_doc(data, out.clone()){
+                        println!("{:#?}",out);
+                        println!("{:#?}",e);
+                    }
                 }
             }
             Message::PickList(e) => self.encoding = Some(e),
@@ -85,11 +88,33 @@ impl Sandbox for MainWindow {
             self.encoding.clone(),
             Message::PickList,
         );
-
-        let c = column![open_button, save_dir_button, go_button]
+        let files = self
+            .files
+            .iter()
+            .map(|f| text(f.file_name().unwrap().to_str().unwrap()).into())
+            .collect::<Vec<iced::Element<'_, _>>>();
+        let scroll_content = column(files).align_items(Alignment::Start);
+        let scroll = scrollable(scroll_content)
+            .height(Length::Fill)
+            .horizontal_scroll(scrollable::Properties::new())
+            .vertical_scroll(scrollable::Properties::new());
+        let open_column = column![text("Files:"), scroll, open_button]
             .spacing(10)
+            .padding(20)
+            .width(300)
             .align_items(Alignment::Center);
-        let content = column![c, encodings_list];
+        let save_dit_text = text(self.output_directory.display());
+        let save_column = column![
+            text("Encoding:"),
+            encodings_list,
+            save_dir_button,
+            save_dit_text,
+            go_button
+        ]
+        .spacing(10)
+        .padding(20)
+        .align_items(Alignment::Center);
+        let content = row![open_column, save_column];
         container(content).center_y().center_x().padding(10).into()
     }
 
