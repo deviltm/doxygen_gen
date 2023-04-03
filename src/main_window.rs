@@ -3,8 +3,16 @@ use iced::{
     widget::{button, column, container, pick_list, progress_bar, row, scrollable, text},
     Alignment, Length, Sandbox,
 };
+use once_cell::sync::Lazy;
+use rayon::prelude::*;
 use rfd::FileDialog;
-use std::{borrow::Cow, ops::RangeInclusive, path::PathBuf, thread, sync::mpsc::channel};
+use std::{
+    borrow::{BorrowMut, Cow},
+    ops::RangeInclusive,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    thread,
+};
 
 use crate::{exporter::export_doc, parser::parse_file};
 
@@ -22,7 +30,7 @@ pub enum Message {
     PickList(String),
     ProccessButtonClick,
     SaveDirectoryButtonClick,
-    ProgressChanged(i32),
+    ProgressChanged,
 }
 
 fn process_file(r#in: PathBuf, out: &PathBuf, encoding: &dyn Encoding) {
@@ -74,27 +82,33 @@ impl Sandbox for MainWindow {
                     .iter()
                     .find(|x| x.name() == self.encoding.clone().unwrap())
                     .unwrap();
-                
+
+                //Prepare data for multithreading
                 let files = self.files.clone();
                 self.files.clear();
                 let output_directory = self.output_directory.clone();
 
-                let (tx,rx) = channel();
+                //Create a safe structure to pass the &mut self between all the threads
+                // let arc_mutex_self = Arc::new(Mutex::new(&self));
 
-                let processing_thread = thread::spawn(move || {
-                    for file in files {
+                // let _thread_handle = thread::spawn(move || {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(0)
+                    .build()
+                    .unwrap();
+                pool.spawn(move || {
+                    files.par_iter().for_each(|file| {
                         process_file(file.clone(), &output_directory, encoding.to_owned());
-                        tx.send(file).unwrap();
-                    }
+                        println!("Processed {}", file.display());
+                        // arc_mutex_self
+                        //     .lock()
+                        //     .unwrap()
+                        //     .update(Message::ProgressChanged);
+                    });
                 });
-
-                for file in rx{
-                    println!("{:#?}", file);
-                }
-                processing_thread.join().unwrap();
             }
             Message::PickList(e) => self.encoding = Some(e),
-            Message::ProgressChanged(val) => self.progress = val,
+            Message::ProgressChanged => self.progress += 1,
         }
     }
 

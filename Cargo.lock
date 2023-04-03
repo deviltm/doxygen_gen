@@ -594,6 +594,8 @@ dependencies = [
  "docx-rs",
  "encoding",
  "iced",
+ "once_cell",
+ "rayon",
  "regex",
  "rfd",
 ]
