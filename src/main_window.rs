@@ -61,7 +61,7 @@ impl Application for MainWindow {
                 encoding: Some("utf-8".to_owned()),
                 output_directory: PathBuf::default(),
                 processing: false,
-                progress: (0,0),
+                progress: (0, 0),
             },
             Command::none(),
         )
@@ -161,13 +161,16 @@ impl Application for MainWindow {
             .padding(20)
             .width(Length::Fill)
             .align_items(Alignment::Center);
-        let save_dit_text = text(self.output_directory.display());
+        let save_dit_text = text(self.output_directory.display()).width(180);
         let save_column = if self.processing {
-            let progress = progress_bar(
-                RangeInclusive::new(0.0, self.progress.1 as f32),
-                self.progress.0 as f32,
-            )
-            .width(30);
+            let progress = row![
+                progress_bar(
+                    RangeInclusive::new(0.0, self.progress.1 as f32),
+                    self.progress.0 as f32,
+                )
+                .width(Length::Fill),
+                text(format!("{}/{}", self.progress.0, self.progress.1))
+            ].width(180).spacing(10);
             column![
                 text("Encoding:"),
                 encodings_list,
