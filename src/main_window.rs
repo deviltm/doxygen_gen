@@ -134,9 +134,16 @@ impl Application for MainWindow {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        let go_button = button("Process").on_press(Message::ProccessButtonClick);
-        let open_button = button("Select files").on_press(Message::OpenFileButtonClick);
-        let save_dir_button = button("Save directory").on_press(Message::SaveDirectoryButtonClick);
+        let mut go_button = button("Process");
+        let mut open_button = button("Select files");
+        let mut save_dir_button = button("Save directory");
+        if !self.processing {
+            open_button = open_button.on_press(Message::OpenFileButtonClick);
+            save_dir_button = save_dir_button.on_press(Message::SaveDirectoryButtonClick);
+            if self.files.len() > 0 && self.output_directory.exists() {
+                go_button = go_button.on_press(Message::ProccessButtonClick)
+            }
+        }
         let encodings_list = pick_list(
             encoding::all::encodings()
                 .iter()
@@ -170,7 +177,9 @@ impl Application for MainWindow {
                 )
                 .width(Length::Fill),
                 text(format!("{}/{}", self.progress.0, self.progress.1))
-            ].width(180).spacing(10);
+            ]
+            .width(180)
+            .spacing(10);
             column![
                 text("Encoding:"),
                 encodings_list,
