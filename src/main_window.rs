@@ -1,6 +1,8 @@
 use encoding::Encoding;
 use iced::{
-    executor, subscription,
+    executor,
+    futures::channel::mpsc::{channel, Receiver, Sender},
+    subscription,
     widget::{button, column, container, pick_list, progress_bar, row, scrollable, text},
     Alignment, Application, Command, Length, Subscription, Theme,
 };
@@ -16,8 +18,10 @@ use std::{
 
 use crate::{exporter::export_doc, parser::parse_file};
 
-static BUFFER: Lazy<Arc<Mutex<Vec<PathBuf>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
-static FINISHED: Lazy<Arc<Mutex<bool>>> = Lazy::new(|| Arc::new(Mutex::new(false)));
+static CHANEL_SENDER: Lazy<Arc<Mutex<Option<Sender<Option<PathBuf>>>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(None)));
+static CHANEL_RECEIVER: Lazy<Arc<Mutex<Option<Receiver<Option<PathBuf>>>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(None)));
 
 pub struct MainWindow {
     files: Vec<PathBuf>,
@@ -33,7 +37,7 @@ pub enum Message {
     PickList(String),
     ProccessButtonClick,
     SaveDirectoryButtonClick,
-    ProgressChanged(Vec<PathBuf>),
+    ProgressChanged((PathBuf, bool)),
 }
 
 fn process_file(r#in: PathBuf, out: &Path, encoding: &dyn Encoding) {
@@ -48,13 +52,16 @@ fn process_file(r#in: PathBuf, out: &Path, encoding: &dyn Encoding) {
         println!("{:#?}", out);
         println!("{:#?}", e);
     }
-    BUFFER.lock().unwrap().push(r#in);
 }
 
 impl Application for MainWindow {
     type Message = Message;
 
     fn new(_flags: ()) -> (MainWindow, Command<Message>) {
+        //why 128? idk it's just a nice number
+        let (tx, rx) = channel(128);
+        *CHANEL_SENDER.lock().unwrap() = Some(tx);
+        *CHANEL_RECEIVER.lock().unwrap() = Some(rx);
         (
             MainWindow {
                 files: Vec::default(),
@@ -88,7 +95,6 @@ impl Application for MainWindow {
                 }
             }
             Message::ProccessButtonClick => {
-                //TODO: add empty value checks
                 let encoding = encoding::all::encodings()
                     .iter()
                     .find(|x| x.name() == self.encoding.clone().unwrap())
@@ -96,9 +102,7 @@ impl Application for MainWindow {
 
                 //Prepare data for multithreading
                 let files = self.files.clone();
-                // self.files.clear();
                 let output_directory = self.output_directory.clone();
-
                 let pool = rayon::ThreadPoolBuilder::new()
                     //use max num of threads (Add config for that?)
                     .num_threads(0)
@@ -109,25 +113,32 @@ impl Application for MainWindow {
                 pool.spawn(move || {
                     files.par_iter().for_each(|file| {
                         process_file(file.clone(), &output_directory, encoding.to_owned());
+                        let _ = CHANEL_SENDER
+                            .lock()
+                            .unwrap()
+                            .as_mut()
+                            .unwrap()
+                            .try_send(Some(file.clone()));
                     });
-                    *FINISHED.lock().unwrap() = true;
+                    let _ = CHANEL_SENDER
+                        .lock()
+                        .unwrap()
+                        .as_mut()
+                        .unwrap()
+                        .try_send(None);
                 });
             }
             Message::PickList(e) => self.encoding = Some(e),
-            Message::ProgressChanged(items) => {
-                let mut fin = FINISHED.lock().unwrap();
-                if fin.clone() {
-                    *fin = false;
+            Message::ProgressChanged((item, finished)) => {
+                if finished {
                     self.processing = false;
                     println!("Finished processing (update fn)")
                 }
-                for i in items {
-                    self.files
-                        .iter()
-                        .position(|file| file == &i)
-                        .map(|ind| self.files.remove(ind));
-                    self.progress.0 += 1;
-                }
+                self.files
+                    .iter()
+                    .position(|file| file == &item)
+                    .map(|ind| self.files.remove(ind));
+                self.progress.0 += 1;
             }
         }
         Command::none()
@@ -140,7 +151,7 @@ impl Application for MainWindow {
         if !self.processing {
             open_button = open_button.on_press(Message::OpenFileButtonClick);
             save_dir_button = save_dir_button.on_press(Message::SaveDirectoryButtonClick);
-            if self.files.len() > 0 && self.output_directory.exists() {
+            if !self.files.is_empty() && self.output_directory.exists() {
                 go_button = go_button.on_press(Message::ProccessButtonClick)
             }
         }
@@ -226,8 +237,14 @@ impl Application for MainWindow {
     type Flags = ();
 }
 
-async fn check_progress() -> (Option<Vec<PathBuf>>, i32) {
-    let items = BUFFER.lock().unwrap().clone();
-    BUFFER.lock().unwrap().clear();
-    (Some(items), 0)
+async fn check_progress() -> (Option<(PathBuf, bool)>, i32) {
+    let next = CHANEL_RECEIVER.lock().unwrap().as_mut().unwrap().try_next();
+    if next.is_err() {
+        return (None, 0);
+    }
+    let next = next.unwrap().unwrap();
+    if let Some(path) = next {
+        return (Some((path, false)), 0);
+    }
+    (Some((PathBuf::default(), true)), 0)
 }
