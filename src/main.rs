@@ -1,4 +1,4 @@
-use iced::Sandbox;
+use iced::Application;
 use iced::Settings;
 //Module to define all the needed regex
 mod regex;

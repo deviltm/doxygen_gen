@@ -1,20 +1,22 @@
 use encoding::Encoding;
 use iced::{
+    executor, subscription,
     widget::{button, column, container, pick_list, progress_bar, row, scrollable, text},
-    Alignment, Length, Sandbox,
+    Alignment, Application, Command, Length, Subscription, Theme,
 };
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use rfd::FileDialog;
 use std::{
-    borrow::{BorrowMut, Cow},
+    borrow::Cow,
     ops::RangeInclusive,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    thread,
 };
 
 use crate::{exporter::export_doc, parser::parse_file};
+
+static BUFFER: Lazy<Arc<Mutex<Vec<PathBuf>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
 
 pub struct MainWindow {
     files: Vec<PathBuf>,
@@ -30,10 +32,10 @@ pub enum Message {
     PickList(String),
     ProccessButtonClick,
     SaveDirectoryButtonClick,
-    ProgressChanged,
+    ProgressChanged(Vec<PathBuf>),
 }
 
-fn process_file(r#in: PathBuf, out: &PathBuf, encoding: &dyn Encoding) {
+fn process_file(r#in: PathBuf, out: &Path, encoding: &dyn Encoding) {
     let data = parse_file(r#in.clone(), encoding.to_owned()).unwrap();
     let mut out = out.join(r#in.file_name().unwrap());
     out.set_extension("docx");
@@ -41,26 +43,30 @@ fn process_file(r#in: PathBuf, out: &PathBuf, encoding: &dyn Encoding) {
         println!("{:#?}", out);
         println!("{:#?}", e);
     }
+    BUFFER.lock().unwrap().push(r#in);
 }
 
-impl Sandbox for MainWindow {
+impl Application for MainWindow {
     type Message = Message;
 
-    fn new() -> Self {
-        MainWindow {
-            files: Vec::default(),
-            encoding: Some("utf-8".to_owned()),
-            output_directory: PathBuf::default(),
-            processing: false,
-            progress: 0,
-        }
+    fn new(_flags: ()) -> (MainWindow, Command<Message>) {
+        (
+            MainWindow {
+                files: Vec::default(),
+                encoding: Some("utf-8".to_owned()),
+                output_directory: PathBuf::default(),
+                processing: false,
+                progress: 0,
+            },
+            Command::none(),
+        )
     }
 
     fn title(&self) -> String {
         "Test".to_owned()
     }
 
-    fn update(&mut self, message: Self::Message) {
+    fn update(&mut self, message: Self::Message) -> Command<Message> {
         match message {
             Message::OpenFileButtonClick => {
                 let files = FileDialog::new()
@@ -88,11 +94,8 @@ impl Sandbox for MainWindow {
                 self.files.clear();
                 let output_directory = self.output_directory.clone();
 
-                //Create a safe structure to pass the &mut self between all the threads
-                // let arc_mutex_self = Arc::new(Mutex::new(&self));
-
-                // let _thread_handle = thread::spawn(move || {
                 let pool = rayon::ThreadPoolBuilder::new()
+                    //use max num of threads (Add config for that?)
                     .num_threads(0)
                     .build()
                     .unwrap();
@@ -100,20 +103,17 @@ impl Sandbox for MainWindow {
                     files.par_iter().for_each(|file| {
                         process_file(file.clone(), &output_directory, encoding.to_owned());
                         println!("Processed {}", file.display());
-                        // arc_mutex_self
-                        //     .lock()
-                        //     .unwrap()
-                        //     .update(Message::ProgressChanged);
                     });
                 });
             }
             Message::PickList(e) => self.encoding = Some(e),
-            Message::ProgressChanged => self.progress += 1,
+            Message::ProgressChanged(_) => self.progress += 1,
         }
+        Command::none()
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        let go_button = button("Proccess").on_press(Message::ProccessButtonClick);
+        let go_button = button("Process").on_press(Message::ProccessButtonClick);
         let open_button = button("Select files").on_press(Message::OpenFileButtonClick);
         let save_dir_button = button("Save directory").on_press(Message::SaveDirectoryButtonClick);
         let encodings_list = pick_list(
@@ -141,14 +141,13 @@ impl Sandbox for MainWindow {
             .width(Length::Fill)
             .align_items(Alignment::Center);
         let save_dit_text = text(self.output_directory.display());
-        let save_column;
-        if self.processing {
+        let save_column = if self.processing {
             let progress = progress_bar(
                 RangeInclusive::new(0.0, self.files.len() as f32),
                 self.progress as f32,
             )
             .width(Length::Fill);
-            save_column = column![
+            column![
                 text("Encoding:"),
                 encodings_list,
                 save_dir_button,
@@ -158,9 +157,9 @@ impl Sandbox for MainWindow {
             ]
             .spacing(10)
             .padding(20)
-            .align_items(Alignment::Center);
+            .align_items(Alignment::Center)
         } else {
-            save_column = column![
+            column![
                 text("Encoding:"),
                 encodings_list,
                 save_dir_button,
@@ -169,13 +168,31 @@ impl Sandbox for MainWindow {
             ]
             .spacing(10)
             .padding(20)
-            .align_items(Alignment::Center);
-        }
+            .align_items(Alignment::Center)
+        };
         let content = row![open_column, save_column];
         container(content).center_y().center_x().padding(10).into()
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        if self.processing {
+            return subscription::unfold(0, 0, move |_| check_progress())
+                .map(Message::ProgressChanged);
+        }
+        Subscription::none()
     }
 
     fn theme(&self) -> iced::Theme {
         iced::Theme::Dark
     }
+
+    type Executor = executor::Default;
+
+    type Theme = Theme;
+
+    type Flags = ();
+}
+
+async fn check_progress() -> (Option<Vec<PathBuf>>, i32) {
+    todo!()
 }
