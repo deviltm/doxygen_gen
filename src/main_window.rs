@@ -17,14 +17,14 @@ use std::{
 use crate::{exporter::export_doc, parser::parse_file};
 
 static BUFFER: Lazy<Arc<Mutex<Vec<PathBuf>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
-static FINISHED: Lazy<Arc<Mutex<bool>>> = Lazy::new(|| Arc::new(Mutex::new(true)));
+static FINISHED: Lazy<Arc<Mutex<bool>>> = Lazy::new(|| Arc::new(Mutex::new(false)));
 
 pub struct MainWindow {
     files: Vec<PathBuf>,
     encoding: Option<String>,
     output_directory: PathBuf,
     processing: bool,
-    progress: i32,
+    progress: (i32, i32),
 }
 
 #[derive(Debug, Clone)]
@@ -37,7 +37,11 @@ pub enum Message {
 }
 
 fn process_file(r#in: PathBuf, out: &Path, encoding: &dyn Encoding) {
-    let data = parse_file(r#in.clone(), encoding.to_owned()).unwrap();
+    let data = parse_file(r#in.clone(), encoding.to_owned());
+    if data.is_err() {
+        println!("Could not parse {}", r#in.display());
+    }
+    let data = data.unwrap();
     let mut out = out.join(r#in.file_name().unwrap());
     out.set_extension("docx");
     if let Err(e) = export_doc(data, out.clone()) {
@@ -57,7 +61,7 @@ impl Application for MainWindow {
                 encoding: Some("utf-8".to_owned()),
                 output_directory: PathBuf::default(),
                 processing: false,
-                progress: 0,
+                progress: (0,0),
             },
             Command::none(),
         )
@@ -92,7 +96,7 @@ impl Application for MainWindow {
 
                 //Prepare data for multithreading
                 let files = self.files.clone();
-                self.files.clear();
+                // self.files.clear();
                 let output_directory = self.output_directory.clone();
 
                 let pool = rayon::ThreadPoolBuilder::new()
@@ -101,12 +105,11 @@ impl Application for MainWindow {
                     .build()
                     .unwrap();
                 self.processing = true;
+                self.progress = (0, self.files.len() as i32);
                 pool.spawn(move || {
                     files.par_iter().for_each(|file| {
                         process_file(file.clone(), &output_directory, encoding.to_owned());
-                        // println!("Processed {}", file.display());
                     });
-                    // println!("Processed all!");
                     *FINISHED.lock().unwrap() = true;
                 });
             }
@@ -116,12 +119,15 @@ impl Application for MainWindow {
                 if fin.clone() {
                     *fin = false;
                     self.processing = false;
-                    println!("Finished processing")
+                    println!("Finished processing (update fn)")
                 }
-                if items.len() > 0 {
-                    println!("{:#?}", items);
+                for i in items {
+                    self.files
+                        .iter()
+                        .position(|file| file == &i)
+                        .map(|ind| self.files.remove(ind));
+                    self.progress.0 += 1;
                 }
-                // items.iter().for_each(|i| println!("{:#?}", i))
             }
         }
         Command::none()
@@ -158,10 +164,10 @@ impl Application for MainWindow {
         let save_dit_text = text(self.output_directory.display());
         let save_column = if self.processing {
             let progress = progress_bar(
-                RangeInclusive::new(0.0, self.files.len() as f32),
-                self.progress as f32,
+                RangeInclusive::new(0.0, self.progress.1 as f32),
+                self.progress.0 as f32,
             )
-            .width(Length::Fill);
+            .width(30);
             column![
                 text("Encoding:"),
                 encodings_list,
