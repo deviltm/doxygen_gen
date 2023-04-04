@@ -12,6 +12,6 @@ typedef struct koejtpsd {
 
 //! Test struct
 typedef struct test {
-  int a; //!< This is A // Has more stuff
+  int a; //!< This is A //(100,200)
   int b; //!< This is B
 } test;

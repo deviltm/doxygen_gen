@@ -1,3 +1,20 @@
+//The GPLv3 License (GPLv3)
+//
+//Copyright (c) 2023 Ciubix8513
+//
+//This program is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation, either version 3 of the License, or
+//any later version.
+//
+//This program is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 use encoding::Encoding;
 use iced::{
     executor,
@@ -15,7 +32,6 @@ use std::{
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
-
 use crate::{exporter::export_doc, parser::parse_file};
 
 static CHANEL_SENDER: Lazy<Arc<Mutex<Option<Sender<Option<PathBuf>>>>>> =
@@ -41,6 +57,7 @@ pub enum Message {
 }
 
 fn process_file(r#in: PathBuf, out: &Path, encoding: &dyn Encoding) {
+    //I don't think I need all this error checking, but i'm just gonna leave it 
     let data = parse_file(r#in.clone(), encoding.to_owned());
     if data.is_err() {
         println!("Could not parse {}", r#in.display());
@@ -75,7 +92,8 @@ impl Application for MainWindow {
     }
 
     fn title(&self) -> String {
-        "Test".to_owned()
+        //I use I3 so I have no idea how that looks
+        "Doxygen docx exporter".to_owned()
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Message> {
@@ -148,6 +166,8 @@ impl Application for MainWindow {
         let mut go_button = button("Process");
         let mut open_button = button("Select files");
         let mut save_dir_button = button("Save directory");
+
+        //Disable the buttons when needed
         if !self.processing {
             open_button = open_button.on_press(Message::OpenFileButtonClick);
             save_dir_button = save_dir_button.on_press(Message::SaveDirectoryButtonClick);
@@ -155,6 +175,7 @@ impl Application for MainWindow {
                 go_button = go_button.on_press(Message::ProccessButtonClick)
             }
         }
+
         let encodings_list = pick_list(
             encoding::all::encodings()
                 .iter()
@@ -179,7 +200,9 @@ impl Application for MainWindow {
             .padding(20)
             .width(Length::Fill)
             .align_items(Alignment::Center);
+
         let save_dit_text = text(self.output_directory.display()).width(180);
+        //Add in the progress bar if processing 
         let save_column = if self.processing {
             let progress = row![
                 progress_bar(
@@ -231,9 +254,7 @@ impl Application for MainWindow {
     }
 
     type Executor = executor::Default;
-
     type Theme = Theme;
-
     type Flags = ();
 }
 

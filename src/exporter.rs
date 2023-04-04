@@ -1,7 +1,25 @@
+//The GPLv3 License (GPLv3)
+//
+//Copyright (c) 2023 Ciubix8513
+//
+//This program is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation, either version 3 of the License, or
+//any later version.
+//
+//This program is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 use crate::parser::DocumentationData;
 use docx_rs::*;
 use std::{fs::File, path::PathBuf};
 
+//Some macros to make my life easier 
 #[macro_export]
 macro_rules! paragraph {
     ($text:expr) => {
@@ -30,6 +48,7 @@ pub fn export_doc(data: DocumentationData, file: PathBuf) -> Result<(), std::io:
     //page_orient isn't working rn, so I had to do it manually
     let mut doc = Docx::new().page_size(16837, 11905);
     let mut table_count = 1;
+    //While I can make a system for defining the tables, it'd be quite a pain for this project
     let header = vec![TableRow::new(vec![
         cell!("Название элемента структуры"),
         cell!("Код параметра"),
