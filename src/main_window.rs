@@ -17,6 +17,7 @@ use std::{
 use crate::{exporter::export_doc, parser::parse_file};
 
 static BUFFER: Lazy<Arc<Mutex<Vec<PathBuf>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
+static FINISHED: Lazy<Arc<Mutex<bool>>> = Lazy::new(|| Arc::new(Mutex::new(true)));
 
 pub struct MainWindow {
     files: Vec<PathBuf>,
@@ -99,15 +100,29 @@ impl Application for MainWindow {
                     .num_threads(0)
                     .build()
                     .unwrap();
+                self.processing = true;
                 pool.spawn(move || {
                     files.par_iter().for_each(|file| {
                         process_file(file.clone(), &output_directory, encoding.to_owned());
-                        println!("Processed {}", file.display());
+                        // println!("Processed {}", file.display());
                     });
+                    // println!("Processed all!");
+                    *FINISHED.lock().unwrap() = true;
                 });
             }
             Message::PickList(e) => self.encoding = Some(e),
-            Message::ProgressChanged(_) => self.progress += 1,
+            Message::ProgressChanged(items) => {
+                let mut fin = FINISHED.lock().unwrap();
+                if fin.clone() {
+                    *fin = false;
+                    self.processing = false;
+                    println!("Finished processing")
+                }
+                if items.len() > 0 {
+                    println!("{:#?}", items);
+                }
+                // items.iter().for_each(|i| println!("{:#?}", i))
+            }
         }
         Command::none()
     }
@@ -194,5 +209,7 @@ impl Application for MainWindow {
 }
 
 async fn check_progress() -> (Option<Vec<PathBuf>>, i32) {
-    todo!()
+    let items = BUFFER.lock().unwrap().clone();
+    BUFFER.lock().unwrap().clear();
+    (Some(items), 0)
 }
