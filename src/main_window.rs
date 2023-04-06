@@ -15,7 +15,6 @@
 //You should have received a copy of the GNU General Public License
 //along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use encoding::Encoding;
 use iced::{
     executor,
     futures::channel::mpsc::{channel, Receiver, Sender},
@@ -29,10 +28,10 @@ use rfd::FileDialog;
 use std::{
     borrow::Cow,
     ops::RangeInclusive,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
-use crate::{exporter::export_doc, parser::parse_file};
+use crate::helpers::process_file;
 
 static CHANEL_SENDER: Lazy<Arc<Mutex<Option<Sender<Option<PathBuf>>>>>> =
     Lazy::new(|| Arc::new(Mutex::new(None)));
@@ -54,21 +53,6 @@ pub enum Message {
     ProccessButtonClick,
     SaveDirectoryButtonClick,
     ProgressChanged((PathBuf, bool)),
-}
-
-fn process_file(r#in: PathBuf, out: &Path, encoding: &dyn Encoding) {
-    //I don't think I need all this error checking, but i'm just gonna leave it 
-    let data = parse_file(r#in.clone(), encoding.to_owned());
-    if data.is_err() {
-        println!("Could not parse {}", r#in.display());
-    }
-    let data = data.unwrap();
-    let mut out = out.join(r#in.file_name().unwrap());
-    out.set_extension("docx");
-    if let Err(e) = export_doc(data, out.clone()) {
-        println!("{:#?}", out);
-        println!("{:#?}", e);
-    }
 }
 
 impl Application for MainWindow {

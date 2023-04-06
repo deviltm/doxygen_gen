@@ -37,6 +37,8 @@ pub struct DocumentationItemChild {
     pub datatype: String,
     pub note: String,
     pub additional_data: String,
+    pub signed: Option<i32>,
+    pub bits: Option<(i32, i32)>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -116,6 +118,8 @@ pub fn parse_file(
                         datatype: captures.get(1).unwrap().as_str().to_owned(),
                         note: note.to_owned(),
                         additional_data: data.to_owned(),
+                        signed:  None,
+                        bits: None
                     });
                 }
                 //The name check may not be necesarry, but gonna leave it here just in case
