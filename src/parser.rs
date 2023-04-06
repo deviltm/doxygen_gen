@@ -37,8 +37,9 @@ pub struct DocumentationItemChild {
     pub datatype: String,
     pub note: String,
     pub additional_data: String,
-    pub signed: Option<i32>,
-    pub bits: Option<(i32, i32)>,
+    pub signed: String,
+    pub bits: String,
+    pub val: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -75,6 +76,7 @@ pub fn parse_file(
     let def_regex = name_regex();
     let field_regex = field_regex();
     let additional_data_regex = additional_data_regex();
+    let signed_regex = signed_data_regex();
 
     for line in contents.lines() {
         if line.is_empty() {
@@ -108,18 +110,27 @@ pub fn parse_file(
                 if let Some(captures) = captures {
                     let mut note = captures.get(2).unwrap().as_str();
                     let mut data = "-";
+                    let mut signed = "-";
+                    let mut bits = "-";
+                    let mut val = "-";
                     if note.contains(" //") {
                         if let Some(captures) = additional_data_regex.captures(note) {
                             note = captures.get(1).unwrap().as_str();
                             data = captures.get(2).unwrap().as_str();
+                            if let Some(captures) = signed_regex.captures(note) {
+                                signed = captures.get(1).unwrap().as_str();
+                                bits = captures.get(2).unwrap().as_str();
+                                val = captures.get(3).unwrap().as_str();
+                            }
                         }
                     }
                     curret_item.children.push(DocumentationItemChild {
                         datatype: captures.get(1).unwrap().as_str().to_owned(),
                         note: note.to_owned(),
                         additional_data: data.to_owned(),
-                        signed:  None,
-                        bits: None
+                        signed: signed.to_owned(),
+                        bits: bits.to_owned(),
+                        val: val.to_owned(),
                     });
                 }
                 //The name check may not be necesarry, but gonna leave it here just in case
@@ -155,6 +166,7 @@ fn parse_simple_file_test() {
         datatype: "int a;".to_owned(),
         note: "This is A".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -164,6 +176,7 @@ fn parse_simple_file_test() {
         datatype: "int b;".to_owned(),
         note: "This is B".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -189,6 +202,7 @@ fn parse_file_with_multiple_stucts_test() {
         datatype: "int a;".to_owned(),
         note: "This is A".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -198,6 +212,7 @@ fn parse_file_with_multiple_stucts_test() {
         datatype: "int b;".to_owned(),
         note: "This is B".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -223,6 +238,7 @@ fn parse_file_with_enum_test() {
         datatype: "a,".to_owned(),
         note: "This is A".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -232,6 +248,7 @@ fn parse_file_with_enum_test() {
         datatype: "b,".to_owned(),
         note: "This is B".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -257,6 +274,7 @@ fn parse_file_with_defines_test() {
         datatype: "int a;".to_owned(),
         note: "This is A".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -266,6 +284,7 @@ fn parse_file_with_defines_test() {
         datatype: "int b;".to_owned(),
         note: "This is B".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -283,6 +302,7 @@ fn parse_file_with_additional_note_test() {
         note: "Test struct".to_owned(),
         name: "test".to_owned(),
         children: Vec::default(),
+        ..Default::default()
     };
     assert_eq!(data.r#type, expected.r#type);
     assert_eq!(data.note, expected.note);
@@ -291,6 +311,7 @@ fn parse_file_with_additional_note_test() {
         datatype: "int a;".to_owned(),
         note: "This is A".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[0].clone();
     assert_eq!(child.datatype, expected.datatype);
@@ -300,6 +321,7 @@ fn parse_file_with_additional_note_test() {
         datatype: "int b;".to_owned(),
         note: "This is B".to_owned(),
         additional_data: "".to_owned(),
+        ..Default::default()
     };
     let child = data.children[1].clone();
     assert_eq!(child.datatype, expected.datatype);
