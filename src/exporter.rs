@@ -19,7 +19,7 @@ use crate::parser::DocumentationData;
 use docx_rs::*;
 use std::{fs::File, path::PathBuf};
 
-//Some macros to make my life easier 
+//Some macros to make my life easier
 #[macro_export]
 macro_rules! paragraph {
     ($text:expr) => {
@@ -80,9 +80,13 @@ pub fn export_doc(data: DocumentationData, file: PathBuf) -> Result<(), std::io:
                         cell!("-"),
                         cell!(l.note.to_owned()),
                         cell!("-"),
-                        cell!("-"),
-                        cell!("-"),
-                        cell!(l.additional_data.to_owned()),
+                        cell!(l.signed.to_owned()),
+                        cell!(l.bits.to_owned()),
+                        cell!(if l.val.is_empty() {
+                            l.additional_data.to_owned()
+                        } else {
+                            l.additional_data.to_owned() + " " + &l.val
+                        }),
                     ])
                 }))
                 .collect(),

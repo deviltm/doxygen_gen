@@ -112,15 +112,16 @@ pub fn parse_file(
                     let mut data = "-";
                     let mut signed = "-";
                     let mut bits = "-";
-                    let mut val = "-";
+                    let mut val = "";
                     if note.contains(" //") {
                         if let Some(captures) = additional_data_regex.captures(note) {
                             note = captures.get(1).unwrap().as_str();
                             data = captures.get(2).unwrap().as_str();
-                            if let Some(captures) = signed_regex.captures(note) {
-                                signed = captures.get(1).unwrap().as_str();
-                                bits = captures.get(2).unwrap().as_str();
-                                val = captures.get(3).unwrap().as_str();
+                            if let Some(captures) = signed_regex.captures(data) {
+                                data = captures.get(1).unwrap().as_str();
+                                signed = captures.get(2).unwrap().as_str();
+                                bits = captures.get(3).unwrap().as_str();
+                                val = captures.get(4).unwrap().as_str();
                             }
                         }
                     }

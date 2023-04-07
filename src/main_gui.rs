@@ -17,7 +17,6 @@
 
 use iced::Application;
 use iced::Settings;
-
 //Modele for some helper funcs
 mod helpers;
 //Module to define all the needed regex
