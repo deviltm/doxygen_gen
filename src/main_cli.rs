@@ -40,9 +40,10 @@ mod exporter;
     long_about = None,
     override_usage = 
     "\n\
-     cli --files \"a.h b.h c.h\" --output out\n\
-     cli --files \"a.h b.h c.h\" --output out --encoding windows-1251\n\
-     cli --file a.h --file b.h --file c.h -output out"
+     doxygen_gen-cli --files \"a.h b.h c.h\" --output out\n\
+     doxygen_gen-cli --files \"a.h b.h\" --file c.h --output out\n\
+     doxygen_gen-cli --files \"a.h b.h c.h\" --output out --encoding windows-1251\n\
+     doxygen_gen-cli --file a.h --file b.h --file c.h -output out"
 )]
 struct Args {
     #[arg(
@@ -110,7 +111,7 @@ fn main() {
                 "{msg}\n\
                 [{bar:20}] {pos}/{len}").unwrap().progress_chars("-> "));
 
-    let pool = ThreadPoolBuilder::new().num_threads(1).build().unwrap();
+    let pool = ThreadPoolBuilder::new().num_threads(0).build().unwrap();
     let (tx,rx) = mpsc::channel::<()>();
     let tx = Arc::new(Mutex::new(tx));
 
