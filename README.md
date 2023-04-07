@@ -11,6 +11,7 @@ The app uses rayon to spread the load between multiple cores, so it's FAST
 ```Bash
 cargo build --release --bin doxygen_gen-cli
 ```
+I am not quite sure, but I think you need rustc version > 1.67 
 #### Options
 ```
   -f, --file <FILE>          Specifies file to process, can be used multiple times
