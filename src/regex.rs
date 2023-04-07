@@ -22,11 +22,14 @@ pub fn name_regex() -> Regex {
 pub fn field_regex() -> Regex {
     Regex::new(r"\s*(.+?;?)\s*//!<\s*(.+?)$").unwrap()
 }
+pub fn field_code_regex() -> Regex {
+    Regex::new(r"\s*\[(.+?)\]\s*(.+?)$").unwrap()
+}
 pub fn additional_data_regex() -> Regex {
     Regex::new(r"(.+?)\s+//\s*\((.+?)\)").unwrap()
 }
 pub fn signed_data_regex() -> Regex {
-    Regex::new(r"(\S*\s*\S*)\s*signed:(\d*)\s*bits:(\d*..\d*)\s*([lm]sb:\S*)").unwrap()
+    Regex::new(r"(\S*\s*\S*)\s*signed:(\d*)\s*bits:(\d*..\d*)\s*[lm]sb:(.*)\S*").unwrap()
 }
 
 //Again don't really need these tests, tested all this regex on the https://regex101.com
@@ -100,6 +103,16 @@ fn test_field_struct() {
 }
 
 #[test]
+fn test_field_code_struct() {
+    let input = " [code] description description";
+    let re = field_code_regex();
+    assert_eq!(re.is_match(input), true);
+    let captures = re.captures(input).unwrap();
+    assert_eq!(captures.get(1).unwrap().as_str(), "code");
+    assert_eq!(captures.get(2).unwrap().as_str(), "description description");
+}
+
+#[test]
 fn test_field_enum_struct() {
     let input = "int TEST; //!< description";
     let re = field_regex();
@@ -128,7 +141,7 @@ fn test_signed() {
     assert_eq!(captures.get(1).unwrap().as_str(), "min:-324000 max:324000");
     assert_eq!(captures.get(2).unwrap().as_str(), "4");
     assert_eq!(captures.get(3).unwrap().as_str(), "5..19");
-    assert_eq!(captures.get(4).unwrap().as_str(), "lsb:0.001\"");
+    assert_eq!(captures.get(4).unwrap().as_str(), "0.001\"");
 }
 
 #[test]
@@ -140,5 +153,5 @@ fn test_signed1() {
     assert_eq!(captures.get(1).unwrap().as_str(), "min:-324000 max:324000");
     assert_eq!(captures.get(2).unwrap().as_str(), "4");
     assert_eq!(captures.get(3).unwrap().as_str(), "5..19");
-    assert_eq!(captures.get(4).unwrap().as_str(), "msb:0.001\"");
+    assert_eq!(captures.get(4).unwrap().as_str(), "0.001\"");
 }

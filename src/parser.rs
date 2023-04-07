@@ -35,11 +35,12 @@ pub enum DocumentationType {
 #[derive(Default, Debug, Clone)]
 pub struct DocumentationItemChild {
     pub datatype: String,
+    pub code: String,
     pub note: String,
     pub additional_data: String,
     pub signed: String,
     pub bits: String,
-    pub val: String,
+    pub msb: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -75,6 +76,7 @@ pub fn parse_file(
     //Precompile the regex objects
     let def_regex = name_regex();
     let field_regex = field_regex();
+    let field_code_regex = field_code_regex();
     let additional_data_regex = additional_data_regex();
     let signed_regex = signed_data_regex();
 
@@ -109,10 +111,11 @@ pub fn parse_file(
                 let captures = field_regex.captures(line);
                 if let Some(captures) = captures {
                     let mut note = captures.get(2).unwrap().as_str();
+                    let mut code = "-";
                     let mut data = "-";
                     let mut signed = "-";
                     let mut bits = "-";
-                    let mut val = "";
+                    let mut msb = "-";
                     if note.contains(" //") {
                         if let Some(captures) = additional_data_regex.captures(note) {
                             note = captures.get(1).unwrap().as_str();
@@ -121,17 +124,24 @@ pub fn parse_file(
                                 data = captures.get(1).unwrap().as_str();
                                 signed = captures.get(2).unwrap().as_str();
                                 bits = captures.get(3).unwrap().as_str();
-                                val = captures.get(4).unwrap().as_str();
+                                msb = captures.get(4).unwrap().as_str();
                             }
+                        }
+                    }
+                    if note.contains("[") {
+                        if let Some(captures) = field_code_regex.captures(note) {
+                            code = captures.get(1).unwrap().as_str();
+                            note = captures.get(2).unwrap().as_str();
                         }
                     }
                     curret_item.children.push(DocumentationItemChild {
                         datatype: captures.get(1).unwrap().as_str().to_owned(),
+                        code: code.to_owned(),
                         note: note.to_owned(),
                         additional_data: data.to_owned(),
                         signed: signed.to_owned(),
                         bits: bits.to_owned(),
-                        val: val.to_owned(),
+                        msb: msb.to_owned(),
                     });
                 }
                 //The name check may not be necesarry, but gonna leave it here just in case

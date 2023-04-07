@@ -77,16 +77,12 @@ pub fn export_doc(data: DocumentationData, file: PathBuf) -> Result<(), std::io:
                 .chain(item.children.iter().map(|l| {
                     TableRow::new(vec![
                         cell!(l.datatype.to_owned()),
-                        cell!("-"),
+                        cell!(l.code.to_owned()),
                         cell!(l.note.to_owned()),
-                        cell!("-"),
+                        cell!(l.msb.to_owned()),
                         cell!(l.signed.to_owned()),
                         cell!(l.bits.to_owned()),
-                        cell!(if l.val.is_empty() {
-                            l.additional_data.to_owned()
-                        } else {
-                            l.additional_data.to_owned() + " " + &l.val
-                        }),
+                        cell!(l.additional_data.to_owned()),
                     ])
                 }))
                 .collect(),
